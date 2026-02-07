@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Mini Game Cho Người Tui Thương</title>
+<style>
+body{
+  margin:0;font-family:Arial;
+  background:linear-gradient(135deg,#ffdde1,#ee9ca7);
+  text-align:center;
+}
+.screen{display:none;padding:20px}
+.active{display:block}
+.box{
+  background:#fff;border-radius:20px;
+  padding:20px;max-width:420px;
+  margin:30px auto;
+  box-shadow:0 10px 25px rgba(0,0,0,.2)
+}
+button{
+  padding:10px 15px;border:none;
+  border-radius:12px;margin:6px;
+  background:#ffb6c1;cursor:pointer
+}
+.music-btn{
+  position:fixed;top:15px;right:15px;
+  width:46px;height:46px;border-radius:50%;
+  background:#ff5e7e;color:#fff;font-size:18px
+}
+canvas{border-radius:15px}
+.scratch-card {
+  position: relative;
+  width: 260px;
+  height: 160px;
+  margin: auto;
+}
+
+.reward {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas#scratch {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+#reward img{
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  display: block;
+  margin: 10px auto;
+}
+#reward{
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.hidden {
+  visibility: hidden;
+}
+</style>
+</head>
+
+<body>
+
+<audio id="bgm" loop>
+  <source src="music.mp3" type="audio/mpeg">
+</audio>
+<button class="music-btn" onclick="toggleMusic()">🎵</button>
+
+<!-- QUIZ -->
+<div id="quiz" class="screen active box">
+  <h2 id="question"></h2>
+  <div id="answers"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen box">
+  <h3>Tổng điểm: <span id="score"></span></h3>
+  <p>Số lượt quay: <span id="spins"></span></p>
+  <button onclick="startSpin()">Bắt đầu 🎡</button>
+</div>
+
+<!-- WHEEL -->
+<div id="wheelScreen" class="screen box">
+  <h3>Vòng quay may mắn</h3>
+  <canvas id="wheel" width="260" height="260"></canvas>
+  <p>Lượt còn lại: <span id="spinLeft"></span></p>
+  <button onclick="spin()">Quay</button>
+</div>
+
+<!-- SCRATCH -->
+<div id="scratchScreen" class="screen box">
+  <h3>Cào quà 🎁</h3>
+  <div class="scratch-card">
+  <div id="reward" class="reward hidden"></div>
+  <canvas id="scratch" width="260" height="160"></canvas>
+ </div>
+  <button onclick="backToWheel()">Quay tiếp</button>
+</div>
+
+<script>
+/* MUSIC */
+let playing=false;
+function toggleMusic(){
+ const m=bgm; playing?m.pause():m.play(); playing=!playing;
+}
+
+/* QUIZ */
+const questions=[
+ "Em có nhớ lần đầu hai đứa nói chuyện không?",
+ "Em thấy tui quan trọng không?",
+ "Nếu phải chọn, em có chọn tui không?",
+ "Ở bên tui em có vui không?",
+ "Em nghĩ về tui nhiều không?",
+ "Em có tin vào duyên không?",
+ "Nếu tui buồn, em có ở lại không?",
+ "Em có thích mấy điều nhỏ tui làm không?",
+ "Em có muốn đi cùng tui lâu hơn không?",
+ "Em có thương tui không?"
+];
+const answers=[
+ {t:"Rất có",p:4},{t:"Có",p:3},
+ {t:"Bình thường",p:2},{t:"Không",p:1}
+];
+let qi=0,total=0;
+
+function loadQ(){
+ question.innerText=questions[qi];
+ answersBox.innerHTML="";
+ answers.forEach(a=>{
+  let b=document.createElement("button");
+  b.innerText=a.t;
+  b.onclick=()=>{
+    total+=a.p;qi++;
+    qi<questions.length?loadQ():showResult();
+  };
+  answersBox.appendChild(b);
+ });
+}
+const answersBox=document.getElementById("answers");
+loadQ();
+
+/* RESULT */
+function showResult(){
+ show("result");
+ score.innerText=total;
+ spins.innerText=total;
+}
+
+/* WHEEL */
+let spinsLeft,angle=0;
+const slots=[
+ "gift","gift","gift","gift","gift","gift",
+ "gift","gift","gift","gift","gift","gift",
+ "miss","miss"
+];
+const wheelCtx=document.getElementById("wheel").getContext("2d");
+
+function drawWheel(){
+ const n=slots.length,step=2*Math.PI/n;
+ wheelCtx.clearRect(0,0,260,260);
+ for(let i=0;i<n;i++){
+  wheelCtx.beginPath();
+  wheelCtx.moveTo(130,130);
+  wheelCtx.arc(130,130,130,angle+i*step,angle+(i+1)*step);
+  wheelCtx.fillStyle=i%2?"#ffd1dc":"#ff9eb5";
+  wheelCtx.fill();
+ }
+}
+drawWheel();
+
+function startSpin(){
+ spinsLeft=total;
+ spinLeft.innerText=spinsLeft;
+ show("wheelScreen");
+}
+
+function spin(){
+ if(spinsLeft<=0)return alert("Hết lượt rồi");
+ spinsLeft--;spinLeft.innerText=spinsLeft;
+ let t=0,spinInt=setInterval(()=>{
+  angle+=0.3;drawWheel();t++;
+  if(t>30){
+    clearInterval(spinInt);
+    const index=Math.floor(Math.random()*slots.length);
+    slots[index]==="gift"?showReward():alert("Chúc may mắn lần sau");
+  }
+ },30);
+}
+
+/* SCRATCH */
+const rewards=[
+ "<img src='https://i.postimg.cc/NFH9BcK8/70d1cc0f-11f6-43bb-9a95-5eb1094f79f4.jpg' width='260'>",
+ "<img src='https://i.postimg.cc/6p9LKMXq/8fdfca70-266f-483c-ae49-5e7c60db1303.jpg' width='260'>",
+ "<img src='https://i.postimg.cc/gcVZ034X/57595901-b3ac-45c3-8d86-e7bab104bdeb.jpg' width='260'>",
+ "<img src='https://i.postimg.cc/7hwbzQXD/0cb54b55-3af0-4a19-bfb1-4429781c0cf8.jpg' width='260'>",
+ "<img src='https://i.postimg.cc/zGg5JFSd/caa38cee-fb67-4b15-bbcd-36a366b969f0.jpg' width='260'>",
+ "<img src='https://i.postimg.cc/6Q6XdxxM/2b227bcc-b9a7-4a58-bbb7-25ae66549192.jpg' width='260'>",
+ "<img src='https://i.postimg.cc/QN1yxYRb/48e2543c-c20d-4749-bf79-d6c8c61decac.jpg' width='260'>",
+ "<p>Chúc mừng em nhận được món quà bí mật từ tui, đơn giản nhưng là tâm huyết của tui dành cho vợ ❤️ có thể nó không hoàn hảo nhưng tui mong em sẽ cười khi đọc những dòng này, và dù dịp này chúng ta chưa thể ở bên nhau một cách trọn vẹn nhưng mong rằng những ngày tới em sẽ luôn cười thật xinh và sống vô lo vô nghĩ như những bông hoa 🌻.</p>",
+ "<p>Cảm ơn vì em đã ở đây, cùng tui trải qua cái tết thứ hai, cái valentine thứ hai, nhưng với tư cách là ny chứ không chỉ còn là bạn bè nữa.</p>",
+ "<p>Chỉ mong có thêm nhiều khoảnh khắc cùng em, cố gắng vì nhau, vì tình yêu và tương lai của hai chúng ta nhé ❤️ năm mới này hãy cùng nhau thấu hiểu, cùng nhau chia sẻ, hãy tha thứ cho những tính xấu của tui nha.</p>",
+ "<p>Mỗi lần nghĩ tới em, tui đều mỉm cười, cảm ơn em đã xuất hiện trong cuộc sống của tui, yêu tui và bao dung cho tính đáng ghét và trẻ con của tui 💗 valentine vui vẻ, tết vui vẻ, yêu em nhiềuu.</p>",
+ "<p>Hy vọng điều tốt đẹp luôn tìm được em, hy vọng chúng ta sẽ là người đầu tiên của người kia, không phải người đầu tiên ta yêu nhưng sẽ là người đầu tiên ta ôm, ta nắm tay, và cũng là người cuối cùng bước đi cùng nhau dưới một bầu trời ❤️.</p>"
+];
+
+const scratchCanvas = document.getElementById("scratch");
+const scratchCtx = scratchCanvas.getContext("2d");
+
+let scratching = false;
+
+function showReward(){
+  show("scratchScreen");
+
+  reward.classList.add("hidden");
+  scratchCanvas.style.display = "block";
+
+  reward.innerHTML = rewards[Math.floor(Math.random()*rewards.length)];
+
+  scratchCtx.globalCompositeOperation = "source-over";
+  scratchCtx.fillStyle = "#bbb";
+  scratchCtx.fillRect(0,0,260,160);
+  scratchCtx.globalCompositeOperation = "destination-out";
+}
+scratchCanvas.addEventListener("mousedown",()=>scratching=true);
+scratchCanvas.addEventListener("mouseup",()=>{
+  scratching=false;
+  reward.classList.remove("hidden");
+});
+scratchCanvas.addEventListener("mousemove",e=>{
+  if(!scratching) return;
+  const rect = scratchCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  scratchCtx.beginPath();
+  scratchCtx.arc(x,y,15,0,Math.PI*2);
+  scratchCtx.fill();
+});
+
+function backToWheel(){show("wheelScreen");}
+
+/* HELPER */
+function show(id){
+ document.querySelectorAll(".screen")
+ .forEach(s=>s.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
+}
+</script>
+</body>
+</html>
